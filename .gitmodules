@@ -1,0 +1,3 @@
+[submodule "ethers-kt-p2p-otc-desk/src/main/solidity/lib/forge-std"]
+	path = ethers-kt-p2p-otc-desk/src/main/solidity/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
