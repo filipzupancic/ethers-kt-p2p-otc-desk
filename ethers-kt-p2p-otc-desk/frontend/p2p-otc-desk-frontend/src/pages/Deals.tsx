@@ -1,239 +1,564 @@
 import "../App.css";
 import { Footer } from "./Footer.tsx";
+import { useWallet } from "../WalletContext.tsx";
+import { Fragment, useEffect, useState } from 'react';
+import { ArrowPathIcon, PlusSmallIcon } from '@heroicons/react/20/solid';
 
-'use client'
+interface Deal {
+    id: number;
+    userA: string;
+    userB: string;
+    tokenA: string;
+    tokenB: string;
+    amountA: number;
+    amountB: number;
+    userADeposited: boolean;
+    userBDeposited: boolean;
+}
 
-import { Fragment, useState } from 'react'
-import { Dialog, DialogPanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
-import {
-    ArrowDownCircleIcon,
-    ArrowPathIcon,
-    ArrowUpCircleIcon,
-    Bars3Icon,
-    EllipsisHorizontalIcon,
-    PlusSmallIcon,
-} from '@heroicons/react/20/solid'
-import { BellIcon, XMarkIcon } from '@heroicons/react/24/outline'
-
-const navigation = [
-    { name: 'Home', href: '#' },
-    { name: 'Invoices', href: '#' },
-    { name: 'Clients', href: '#' },
-    { name: 'Expenses', href: '#' },
-]
-
-const stats = [
-    { name: 'Revenue', value: '$405,091.00', change: '+4.75%', changeType: 'positive' },
-    { name: 'Overdue invoices', value: '$12,787.00', change: '+54.02%', changeType: 'negative' },
-    { name: 'Outstanding invoices', value: '$245,988.00', change: '-1.39%', changeType: 'positive' },
-    { name: 'Expenses', value: '$30,156.00', change: '+10.18%', changeType: 'negative' },
-]
 const statuses = {
     Paid: 'text-green-700 bg-green-50 ring-green-600/20',
     Withdraw: 'text-gray-600 bg-gray-50 ring-gray-500/10',
     Overdue: 'text-red-700 bg-red-50 ring-red-600/10',
-}
-const days = [
+    Deposited: 'text-green-700 bg-green-50 ring-green-600/20',
+    Pending: 'text-yellow-700 bg-yellow-50 ring-yellow-600/20',
+};
+
+const contractABI = [
     {
-        date: 'Today',
-        dateTime: '2023-03-22',
-        transactions: [
-            {
-                id: 1,
-                invoiceNumber: '00012',
-                href: '#',
-                amount: '$7,600.00 USD',
-                tax: '$500.00',
-                status: 'Paid',
-                client: 'Reform',
-                description: 'Website redesign',
-                icon: ArrowUpCircleIcon,
-            },
-            {
-                id: 2,
-                invoiceNumber: '00011',
-                href: '#',
-                amount: '$10,000.00 USD',
-                status: 'Withdraw',
-                client: 'Tom Cook',
-                description: 'Salary',
-                icon: ArrowDownCircleIcon,
-            },
-            {
-                id: 3,
-                invoiceNumber: '00009',
-                href: '#',
-                amount: '$2,000.00 USD',
-                tax: '$130.00',
-                status: 'Overdue',
-                client: 'Tuple',
-                description: 'Logo design',
-                icon: ArrowPathIcon,
-            },
+        "inputs": [
+            { "internalType": "address", "name": "_userB", "type": "address" },
+            { "internalType": "address", "name": "_tokenA", "type": "address" },
+            { "internalType": "address", "name": "_tokenB", "type": "address" },
+            { "internalType": "uint256", "name": "_amountA", "type": "uint256" },
+            { "internalType": "uint256", "name": "_amountB", "type": "uint256" }
         ],
+        "name": "createDeal",
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+        "stateMutability": "nonpayable",
+        "type": "function"
     },
     {
-        date: 'Yesterday',
-        dateTime: '2023-03-21',
-        transactions: [
+        "inputs": [
             {
-                id: 4,
-                invoiceNumber: '00010',
-                href: '#',
-                amount: '$14,000.00 USD',
-                tax: '$900.00',
-                status: 'Paid',
-                client: 'SavvyCal',
-                description: 'Website redesign',
-                icon: ArrowUpCircleIcon,
-            },
+                "internalType": "uint256",
+                "name": "_dealId",
+                "type": "uint256"
+            }
         ],
-    },
-]
-const clients = [
-    {
-        id: 1,
-        name: 'Tuple',
-        imageUrl: 'https://tailwindui.com/img/logos/48x48/tuple.svg',
-        lastInvoice: { date: 'December 13, 2022', dateTime: '2022-12-13', amount: '$2,000.00', status: 'Overdue' },
+        "name": "deposit",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
     },
     {
-        id: 2,
-        name: 'SavvyCal',
-        imageUrl: 'https://tailwindui.com/img/logos/48x48/savvycal.svg',
-        lastInvoice: { date: 'January 22, 2023', dateTime: '2023-01-22', amount: '$14,000.00', status: 'Paid' },
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "_dealId",
+                "type": "uint256"
+            }
+        ],
+        "name": "withdraw",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
     },
-    {
-        id: 3,
-        name: 'Reform',
-        imageUrl: 'https://tailwindui.com/img/logos/48x48/reform.svg',
-        lastInvoice: { date: 'January 23, 2023', dateTime: '2023-01-23', amount: '$7,600.00', status: 'Paid' },
-    },
-]
+];
 
 function classNames(...classes) {
     return classes.filter(Boolean).join(' ')
 }
 
 export const Deals = () => {
-    return (
-        <div className="w-screen h-screen">
-            <main className="py-16 sm:py-24 lg:py-29">
-                <div className="relative isolate overflow-hidden">
-                    {/* Secondary navigation */}
-                    <header className="pb-4 pt-6 sm:pb-6">
-                        <div
-                            className="mx-auto flex max-w-7xl flex-wrap items-center gap-6 px-4 sm:flex-nowrap sm:px-6 lg:px-8">
-                            <h1 className="text-base font-semibold leading-7 text-gray-900">Deals</h1>
-                            <a
-                                href="#"
-                                className="ml-auto flex items-center gap-x-1 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-                            >
-                                <PlusSmallIcon aria-hidden="true" className="-ml-1.5 h-5 w-5"/>
-                                New deal
-                            </a>
-                        </div>
-                    </header>
-                </div>
+    const { wallet, connect, web3, account } = useWallet();
+    const [deals, setDeals] = useState<Deal[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [showNewDealForm, setShowNewDealForm] = useState(false);
+    const [userB, setUserB] = useState('');
+    const [tokenA, setTokenA] = useState('');
+    const [tokenB, setTokenB] = useState('');
+    const [amountA, setAmountA] = useState(0);
+    const [amountB, setAmountB] = useState(0);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
 
-                <div className="space-y-16 xl:space-y-20">
-                    {/* Recent activity table */}
-                    <div>
-                        <div className="mt-6 overflow-hidden border-t border-gray-100">
-                            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                                <div className="mx-auto max-w-2xl lg:mx-0 lg:max-w-none">
-                                    <table className="w-full text-left">
-                                        <thead className="sr-only">
-                                        <tr>
-                                            <th>Amount</th>
-                                            <th className="hidden sm:table-cell">Client</th>
-                                            <th>More details</th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        {days.map((day) => (
-                                            <Fragment key={day.dateTime}>
-                                                <tr className="text-sm leading-6 text-gray-900">
-                                                    <th scope="colgroup" colSpan={3}
-                                                        className="relative isolate py-2 font-semibold">
-                                                        <time dateTime={day.dateTime}>{day.date}</time>
-                                                        <div
-                                                            className="absolute inset-y-0 right-full -z-10 w-screen border-b border-gray-200 bg-gray-50"/>
-                                                        <div
-                                                            className="absolute inset-y-0 left-0 -z-10 w-screen border-b border-gray-200 bg-gray-50"/>
-                                                    </th>
+    useEffect(() => {
+        const fetchDeals = async () => {
+            if (account) {
+                console.log(`Fetching deals for account: ${account}`);
+                try {
+                    const response = await fetch(`http://localhost:8080/deals/all`);
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch deals');
+                    }
+                    const data: Deal[] = await response.json();
+                    console.log(data);
+                    setDeals(data);
+                } catch (error) {
+                    console.error('Error fetching deals:', error);
+                } finally {
+                    setLoading(false);
+                }
+            }
+        };
+
+        fetchDeals();
+    }, [account]);
+
+    const createDeal = async () => {
+        if (web3 && account) {
+            const contractAddress = "0x4038cf00104d62d7948aa2F246a47F12e90C2Be6";
+            const contract = new web3.eth.Contract(contractABI, contractAddress);
+
+            try {
+                const txOptions = {
+                    from: account,
+                };
+
+                // Estimate the gas required for the transaction
+                const gasEstimate = await contract.methods.createDeal(userB, tokenA, tokenB, amountA, amountB).estimateGas(txOptions);
+
+                // Set a custom gas limit (usually slightly above the estimate)
+                const gasLimit = Math.floor(Number(gasEstimate) * 1.2); // Convert gasEstimate to number and increase by 20% to be safe
+
+                // Set the gas price (Base chain may have specific gas price recommendations)
+                const gasPrice = await web3.eth.getGasPrice(); // Get current gas price
+
+                // Add the gas estimate and custom gas price to the transaction options
+                txOptions.gas = gasLimit.toString(); // Convert gasLimit to string
+                txOptions.gasPrice = gasPrice.toString(); // Convert customGasPrice to string
+
+                const result = await contract.methods.createDeal(userB, tokenA, tokenB, amountA, amountB).send(txOptions);
+                console.log('Deal created successfully:', result);
+                setSuccess('Deal created successfully!');
+                setError(null);
+                setShowNewDealForm(false);
+            } catch (error) {
+                console.error('Failed to create deal:', error);
+                setError(`Failed to create deal: ${error.message}`);
+                setSuccess(null);
+            }
+        }
+    };
+
+
+    const deposit = async (_dealId: number) => {
+        if (web3 && account) {
+            const contractAddress = "0x4038cf00104d62d7948aa2F246a47F12e90C2Be6";
+            const contract = new web3.eth.Contract(contractABI, contractAddress);
+
+            try {
+                const txOptions = {
+                    from: account,
+                };
+
+                console.log('Depositing', _dealId);
+
+                // Estimate the gas required for the transaction
+                const gasEstimate = await contract.methods.deposit(_dealId).estimateGas(txOptions);
+                console.log('Gas estimate:', gasEstimate);
+
+                // Set a custom gas limit (usually slightly above the estimate)
+                const gasLimit = Math.floor(Number(gasEstimate) * 1.2); // Convert gasEstimate to number and increase by 20% to be safe
+
+                // Set the gas price (Base chain may have specific gas price recommendations)
+                const gasPrice = await web3.eth.getGasPrice(); // Get current gas price
+                console.log('Gas price:', gasPrice);
+
+                // Add the gas estimate and custom gas price to the transaction options
+                txOptions.gas = gasLimit.toString(); // Convert gasLimit to string
+                txOptions.gasPrice = gasPrice.toString(); // Convert customGasPrice to string
+
+                await contract.methods.deposit(_dealId).send(txOptions);
+                console.log('Deposited successfully');
+            } catch (error) {
+                console.error('Failed to deposit:', error);
+            }
+        }
+    };
+
+    const withdraw = async (_dealId: number) => {
+        if (web3 && account) {
+            const contractAddress = "0x4038cf00104d62d7948aa2F246a47F12e90C2Be6";
+            const contract = new web3.eth.Contract(contractABI, contractAddress);
+
+            try {
+                const txOptions = {
+                    from: account,
+                };
+
+                console.log('Withdrawing', _dealId);
+
+                // Estimate the gas required for the transaction
+                const gasEstimate = await contract.methods.withdraw(_dealId).estimateGas(txOptions);
+                console.log('Gas estimate:', gasEstimate);
+
+                // Set a custom gas limit (usually slightly above the estimate)
+                const gasLimit = Math.floor(Number(gasEstimate) * 1.2); // Convert gasEstimate to number and increase by 20% to be safe
+
+                // Set the gas price (Base chain may have specific gas price recommendations)
+                const gasPrice = await web3.eth.getGasPrice(); // Get current gas price
+                console.log('Gas price:', gasPrice);
+
+                // Add the gas estimate and custom gas price to the transaction options
+                txOptions.gas = gasLimit.toString(); // Convert gasLimit to string
+                txOptions.gasPrice = gasPrice.toString(); // Convert customGasPrice to string
+
+                await contract.methods.withdraw(_dealId).send(txOptions);
+                console.log('Withdrawn successfully');
+            } catch (error) {
+                console.error('Failed to withdraw:', error);
+            }
+        }
+    };
+
+    return (
+        <div className="bg-white">
+            <main className="py-16 sm:py-24 lg:py-29">
+                {!wallet && (
+                    <div className="three-column-layout h-screen">
+                        <div className="column"></div>
+                        <div className="column center-column">
+                            <div id="deals-no-wallet" className="w-full max-w-md">
+                                <p className="mt-1 text-sm text-gray-500">Connect your wallet to see your deals.</p>
+                                <button onClick={connect} className="w-full mt-5 bg-blue-500 rounded-lg p-2 text-white">
+                                    <span>Connect Wallet</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div className="column"></div>
+                    </div>
+                )}
+                {wallet && loading && <p>Loading deals...</p>}
+                {wallet && !loading && (
+                    <>
+                        <div className="relative isolate overflow-hidden">
+                            <header className="pb-4 pt-6 sm:pb-6">
+                                <div
+                                    className="mx-auto flex max-w-7xl flex-wrap items-center gap-6 px-4 sm:flex-nowrap sm:px-6 lg:px-8">
+                                    <h1 className="text-base font-semibold leading-7 text-gray-900">Deals</h1>
+                                    <button
+                                        onClick={() => setShowNewDealForm(true)}
+                                        className="ml-auto flex items-center gap-x-1 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                                    >
+                                        <PlusSmallIcon aria-hidden="true" className="-ml-1.5 h-5 w-5"/>
+                                        New deal
+                                    </button>
+                                </div>
+                            </header>
+                        </div>
+
+                        {showNewDealForm && (
+                            <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
+                                <div className="sm:mx-auto sm:w-full sm:max-w-sm">
+                                    <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
+                                        Create a new deal
+                                    </h2>
+                                </div>
+
+                                <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
+                                    <div className="modal space-y-6">
+                                        <div>
+                                            <div className="flex items-center justify-between">
+                                                <label htmlFor="password"
+                                                       className="block text-sm font-medium leading-6 text-gray-900">
+                                                    User B Address
+                                                </label>
+                                            </div>
+                                            <div className="mt-2">
+                                                <input
+                                                    id="userB"
+                                                    name="userB"
+                                                    type="text"
+                                                    placeholder=" 0x0"
+                                                    value={userB}
+                                                    onChange={(e) => setUserB(e.target.value)}
+                                                    required
+                                                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <div className="flex items-center justify-between">
+                                                <label htmlFor="password"
+                                                       className="block text-sm font-medium leading-6 text-gray-900">
+                                                    Token A Address
+                                                </label>
+                                            </div>
+                                            <div className="mt-2">
+                                                <input
+                                                    id="tokenA"
+                                                    name="tokenA"
+                                                    type="text"
+                                                    placeholder=" 0x0"
+                                                    value={tokenA}
+                                                    onChange={(e) => setTokenA(e.target.value)}
+                                                    required
+                                                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <div className="flex items-center justify-between">
+                                                <label htmlFor="password"
+                                                       className="block text-sm font-medium leading-6 text-gray-900">
+                                                    Token B Address
+                                                </label>
+                                            </div>
+                                            <div className="mt-2">
+                                                <input
+                                                    id="tokenB"
+                                                    name="tokenB"
+                                                    type="text"
+                                                    placeholder=" 0x0"
+                                                    value={tokenB}
+                                                    onChange={(e) => setTokenB(e.target.value)}
+                                                    required
+                                                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <div className="flex items-center justify-between">
+                                                <label htmlFor="number"
+                                                       className="block text-sm font-medium leading-6 text-gray-900">
+                                                    Amount A
+                                                </label>
+                                            </div>
+                                            <div className="mt-2">
+                                                <input
+                                                    id="amountA"
+                                                    name="amountA"
+                                                    type="number"
+                                                    value={amountA}
+                                                    onChange={(e) => setAmountA(parseFloat(e.target.value))}
+                                                    required
+                                                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <div className="flex items-center justify-between">
+                                                <label htmlFor="number"
+                                                       className="block text-sm font-medium leading-6 text-gray-900">
+                                                    Amount B
+                                                </label>
+                                            </div>
+                                            <div className="mt-2">
+                                                <input
+                                                    id="amountB"
+                                                    name="amountB"
+                                                    type="number"
+                                                    value={amountB}
+                                                    onChange={(e) => setAmountB(parseFloat(e.target.value))}
+                                                    required
+                                                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <button
+                                                onClick={createDeal}
+                                                className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                                            >
+                                                Create
+                                            </button>
+                                            <button
+                                                onClick={() => setShowNewDealForm(false)}
+                                                className="flex w-full justify-center rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600">
+                                                <span>Cancel</span>
+                                            </button>
+                                            {error && <p className="text-red-500">{error}</p>}
+                                            {success && <p className="text-green-500">{success}</p>}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="space-y-16 xl:space-y-20">
+                            <div>
+                                <div className="mt-6 overflow-hidden">
+                                    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                                        <div className="mx-auto max-w-2xl lg:mx-0 lg:max-w-none">
+                                            <table className="w-full text-left">
+                                                <thead className="sr-only">
+                                                <tr>
+                                                    <th>Amount</th>
+                                                    <th className="hidden sm:table-cell">Client</th>
+                                                    <th>More details</th>
                                                 </tr>
-                                                {day.transactions.map((transaction) => (
-                                                    <tr key={transaction.id}>
-                                                        <td className="relative py-5 pr-6">
-                                                            <div className="flex gap-x-6">
-                                                                <transaction.icon
-                                                                    aria-hidden="true"
-                                                                    className="hidden h-6 w-5 flex-none text-gray-400 sm:block"
-                                                                />
-                                                                <div className="flex-auto">
-                                                                    <div className="flex items-start gap-x-3">
-                                                                        <div
-                                                                            className="text-sm font-medium leading-6 text-gray-900">
-                                                                            {transaction.amount}
+                                                </thead>
+                                                <tbody>
+                                                {deals.map((deal) => (
+                                                    <Fragment key={deal.id}>
+                                                        <tr className="text-sm leading-6 text-gray-900 border-b border-gray-200">
+                                                            <th scope="colgroup" colSpan={1}
+                                                                className="relative isolate py-2 font-semibold">
+                                                                <p>Deal ID: {deal.id}</p>
+                                                            </th>
+                                                            <th scope="colgroup" colSpan={1}
+                                                                className="relative isolate py-2 font-semibold">
+                                                                <p>Client</p>
+                                                            </th>
+                                                        </tr>
+
+                                                        <tr>
+                                                            <td className="relative py-5 pr-6">
+                                                                <div className="flex gap-x-6">
+                                                                    <ArrowPathIcon aria-hidden="true"
+                                                                                   className="hidden h-6 w-5 flex-none text-gray-400 sm:block"/>
+                                                                    <div className="flex-auto">
+                                                                        <div className="flex items-start gap-x-3">
+                                                                            <div
+                                                                                className="text-sm font-medium leading-6 text-gray-900">
+                                                                                {deal.amountA}
+                                                                            </div>
+                                                                            <div
+                                                                                className={classNames(statuses[deal.userADeposited ? 'Deposited' : 'Pending'], 'rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset')}>
+                                                                                {deal.userADeposited ? 'Deposited' : 'Pending'}
+                                                                            </div>
                                                                         </div>
                                                                         <div
-                                                                            className={classNames(
-                                                                                statuses[transaction.status],
-                                                                                'rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset',
-                                                                            )}
-                                                                        >
-                                                                            {transaction.status}
-                                                                        </div>
+                                                                            className="mt-1 text-xs leading-5 text-gray-500">Token: {deal.tokenA}</div>
                                                                     </div>
-                                                                    {transaction.tax ? (
-                                                                        <div
-                                                                            className="mt-1 text-xs leading-5 text-gray-500">{transaction.tax} tax</div>
-                                                                    ) : null}
                                                                 </div>
-                                                            </div>
-                                                            <div
-                                                                className="absolute bottom-0 right-full h-px w-screen bg-gray-100"/>
-                                                            <div
-                                                                className="absolute bottom-0 left-0 h-px w-screen bg-gray-100"/>
-                                                        </td>
-                                                        <td className="hidden py-5 pr-6 sm:table-cell">
-                                                            <div
-                                                                className="text-sm leading-6 text-gray-900">{transaction.client}</div>
-                                                            <div
-                                                                className="mt-1 text-xs leading-5 text-gray-500">{transaction.description}</div>
-                                                        </td>
-                                                        <td className="py-5 text-right">
-                                                            <div className="flex justify-end">
-                                                                <a
-                                                                    href={transaction.href}
-                                                                    className="text-sm font-medium leading-6 text-indigo-600 hover:text-indigo-500"
-                                                                >
-                                                                    View<span
-                                                                    className="hidden sm:inline"> transaction</span>
-                                                                    <span className="sr-only">
-                                      , invoice #{transaction.invoiceNumber}, {transaction.client}
-                                    </span>
-                                                                </a>
-                                                            </div>
-                                                            <div className="mt-1 text-xs leading-5 text-gray-500">
-                                                                Invoice <span
-                                                                className="text-gray-900">#{transaction.invoiceNumber}</span>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
+                                                                <div
+                                                                    className="absolute bottom-0 right-full h-px bg-gray-100"/>
+                                                                <div
+                                                                    className="absolute bottom-0 left-0 h-px bg-gray-100"/>
+                                                            </td>
+                                                            <td className="hidden py-5 pr-6 sm:table-cell">
+                                                                <div
+                                                                    className="text-sm leading-6 text-gray-900">{deal.userA}</div>
+                                                            </td>
+                                                            {account!.toLocaleLowerCase() == deal.userA.toLowerCase() && !deal.userADeposited && (
+                                                                <td className="py-5 text-right">
+                                                                    <div className="flex justify-end">
+                                                                        <button onClick={() => deposit(deal.id)}
+                                                                                className="text-sm font-medium leading-6 text-indigo-600 hover:text-indigo-500">
+                                                                            Deposit
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            )}
+                                                            {account!.toLocaleLowerCase() == deal.userA.toLowerCase() && deal.userADeposited && (
+                                                                <td className="py-5 text-right">
+                                                                    <div className="flex justify-end">
+                                                                        <p className="text-sm font-medium leading-6 text-green-600">
+                                                                            Deposited
+                                                                        </p>
+                                                                    </div>
+                                                                </td>
+                                                            )}
+                                                            {account!.toLowerCase() == deal.userB.toLowerCase() && deal.userADeposited && deal.userBDeposited && deal.amountA > 0 && (
+                                                                <td className="py-5 text-right">
+                                                                    <div className="flex justify-end">
+                                                                        <button onClick={() => withdraw(deal.id)}
+                                                                                className="text-sm font-medium leading-6 text-indigo-600 hover:text-indigo-500">
+                                                                            Withdraw
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            )}
+                                                            {account!.toLowerCase() == deal.userB.toLowerCase() && deal.userADeposited && deal.userBDeposited && deal.amountA <= 0 && (
+                                                                <td className="py-5 text-right">
+                                                                    <div className="flex justify-end">
+                                                                        <p className="text-sm font-medium leading-6 text-green-600">
+                                                                            Withdrawn
+                                                                        </p>
+                                                                    </div>
+                                                                </td>
+                                                            )}
+                                                        </tr>
+
+                                                        <tr>
+                                                            <td className="relative py-5 pr-6">
+                                                                <div className="flex gap-x-6">
+                                                                    <ArrowPathIcon aria-hidden="true"
+                                                                                   className="hidden h-6 w-5 flex-none text-gray-400 sm:block"/>
+                                                                    <div className="flex-auto">
+                                                                        <div className="flex items-start gap-x-3">
+                                                                            <div
+                                                                                className="text-sm font-medium leading-6 text-gray-900">
+                                                                                {deal.amountB}
+                                                                            </div>
+                                                                            <div
+                                                                                className={classNames(statuses[deal.userBDeposited ? 'Deposited' : 'Pending'], 'rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset')}>
+                                                                                {deal.userBDeposited ? 'Deposited' : 'Pending'}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div
+                                                                            className="mt-1 text-xs leading-5 text-gray-500">Token: {deal.tokenB}</div>
+                                                                    </div>
+                                                                </div>
+                                                                <div
+                                                                    className="absolute bottom-0 right-full h-px bg-gray-100"/>
+                                                                <div
+                                                                    className="absolute bottom-0 left-0 h-px bg-gray-100"/>
+                                                            </td>
+                                                            <td className="hidden py-5 pr-6 sm:table-cell">
+                                                                <div
+                                                                    className="text-sm leading-6 text-gray-900">{deal.userB}</div>
+                                                            </td>
+                                                            {account!.toLowerCase() == deal.userB.toLocaleLowerCase() && !deal.userBDeposited && (
+                                                                <td className="py-5 text-right">
+                                                                    <div className="flex justify-end">
+                                                                        <button onClick={() => deposit(deal.id)}
+                                                                                className="text-sm font-medium leading-6 text-indigo-600 hover:text-indigo-500">
+                                                                            Deposit
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            )}
+                                                            {account!.toLowerCase() == deal.userB.toLocaleLowerCase() && deal.userBDeposited && (
+                                                                <td className="py-5 text-right">
+                                                                    <div className="flex justify-end">
+                                                                        <p className="text-sm font-medium leading-6 text-green-600">
+                                                                            Deposited
+                                                                        </p>
+                                                                    </div>
+                                                                </td>
+                                                            )}
+                                                            {account!.toLowerCase() == deal.userA.toLowerCase() && deal.userADeposited && deal.userBDeposited && deal.amountB > 0 && (
+                                                                <td className="py-5 text-right">
+                                                                    <div className="flex justify-end">
+                                                                        <button onClick={() => withdraw(deal.id)}
+                                                                                className="text-sm font-medium leading-6 text-indigo-600 hover:text-indigo-500">
+                                                                            Withdraw
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            )}
+                                                            {account!.toLowerCase() == deal.userA.toLowerCase() && deal.userADeposited && deal.userBDeposited && deal.amountB <= 0 && (
+                                                                <td className="py-5 text-right">
+                                                                    <div className="flex justify-end">
+                                                                        <p className="text-sm font-medium leading-6 text-green-600">
+                                                                            Withdrawn
+                                                                        </p>
+                                                                    </div>
+                                                                </td>
+                                                            )}
+                                                        </tr>
+                                                    </Fragment>
                                                 ))}
-                                            </Fragment>
-                                        ))}
-                                        </tbody>
-                                    </table>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
+                    </>
+                )}
             </main>
             <Footer/>
         </div>
-    )
-}
+    );
+};

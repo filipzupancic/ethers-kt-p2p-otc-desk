@@ -1,6 +1,5 @@
 package com.example.ethersktp2potcdesk.security
 
-import com.example.ethersktp2potcdesk.authentication.Web3AuthenticationProvider
 import com.example.ethersktp2potcdesk.services.UserService
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -23,9 +22,6 @@ class SecurityConfig {
     fun encoder(): PasswordEncoder = BCryptPasswordEncoder()
 
     @Bean
-    fun auth(users: UserService): AuthenticationManager = ProviderManager(Web3AuthenticationProvider(users))
-
-    @Bean
     fun cors() =
         object : WebMvcConfigurer {
             override fun addCorsMappings(registry: CorsRegistry) {
@@ -45,6 +41,8 @@ class SecurityConfig {
                     .requestMatchers(HttpMethod.GET, "/challenge/{address}")
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/auth")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/deals/all")
                     .permitAll()
                     .anyRequest()
                     .authenticated()

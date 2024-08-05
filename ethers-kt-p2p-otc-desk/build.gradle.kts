@@ -4,6 +4,12 @@ plugins {
 	id("org.graalvm.buildtools.native") version "0.10.2"
 	kotlin("jvm") version "1.9.24"
 	kotlin("plugin.spring") version "1.9.24"
+	id("io.kriptal.ethers.abigen-plugin") version "0.5.0"
+}
+
+ethersAbigen {
+	directorySource("src/main/abi")
+	outputDir = "generated/source/ethers/main/kotlin"
 }
 
 group = "com.example"

@@ -2,7 +2,35 @@
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
-  top: var(--account-center-position-top, 0);
+}
+
+#deals-no-wallet {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.three-column-layout {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.column {
+  flex: 1;
+}
+
+.center-column {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.container.flex.flex-column.fixed.z-indexed.svelte-w5zexe {
+  bottom: auto !important; /* Remove bottom property */
+  top: var(--account-center-position-top, 0) !important; /* Add top property */
 }
 
 .logo {

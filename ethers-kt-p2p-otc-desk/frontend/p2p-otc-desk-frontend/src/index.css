@@ -15,8 +15,11 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
 
-  top: var(--account-center-position-top, 0);
+.container.flex.flex-column.fixed.z-indexed.svelte-w5zexe {
+  bottom: auto !important; /* Remove bottom property */
+  top: var(--account-center-position-top, 0) !important; /* Add top property */
 }
 
 a {

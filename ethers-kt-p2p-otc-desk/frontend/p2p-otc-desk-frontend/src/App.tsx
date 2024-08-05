@@ -1,7 +1,7 @@
 'use client'
 
 import "./App.css";
-import {useState} from 'react'
+import {useEffect, useState} from 'react'
 import { Dialog, DialogPanel } from '@headlessui/react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
@@ -23,11 +23,11 @@ init({
     wallets: [injected],
     chains: [
         {
-            id: "0x1",
+            id: "0x2105",
             token: "ETH",
-            label: "Mainnet",
-            rpcUrl: "http://reth-1.kriptal.io:8545",
-        },
+            label: "Base",
+            rpcUrl: "https://base.llamarpc.com",
+        }
     ],
     appMetadata: {
         name: "Ethers Kt Splitwise",
@@ -40,8 +40,16 @@ const AppContent = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const { wallet, connect } = useWallet();
 
+    useEffect(() => {
+        const storedWallet = localStorage.getItem("connectedWallet");
+        if (storedWallet && !wallet) {
+            connect();
+        }
+    }, [connect]);
+
     const handleConnect = async () => {
         await connect();
+        localStorage.setItem("wallet", wallet);
     };
 
     return (
@@ -118,7 +126,7 @@ const AppContent = () => {
                                     {!wallet && (
                                         <button
                                             onClick={() => {
-                                                handleConnect().then(r => {
+                                                handleConnect().then(() => {
                                                 });
                                                 setMobileMenuOpen(false);
                                             }}
