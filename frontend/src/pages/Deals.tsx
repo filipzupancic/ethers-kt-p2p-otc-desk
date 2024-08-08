@@ -88,7 +88,7 @@ export const Deals = () => {
             if (account) {
                 console.log(`Fetching deals for account: ${account}`);
                 try {
-                    const response = await fetch(`https://backend.ammpear.xyz:8080/deals/all`);
+                    const response = await fetch(`https://ammpear.xyz:8080/deals/all`);
                     if (!response.ok) {
                         throw new Error('Failed to fetch deals');
                     }
