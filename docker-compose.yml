@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   backend:
     build:
@@ -6,14 +8,13 @@ services:
     ports:
       - "8080:8080"
     environment:
-      # Add any necessary environment variables for your Spring Boot application here
-      SPRING_PROFILES_ACTIVE: production
+      - SPRING_PROFILES_ACTIVE=production
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "5173:5173"
+      - "80:80"
     depends_on:
       - backend
