@@ -1,5 +1,5 @@
-# Stage 1: Build the application
-FROM node:18-alpine AS build
+# Use an official Node.js image to build and run the application
+FROM node:18-alpine
 
 # Set the working directory
 WORKDIR /app
@@ -13,17 +13,8 @@ RUN npm install
 # Copy the rest of the application code
 COPY . .
 
-# Build the application
-RUN npm run build
-
-# Stage 2: Serve the application with Nginx
-FROM nginx:alpine
-
-# Copy the build output to the nginx html directory
-COPY --from=build /app/dist /usr/share/nginx/html
-
-# Expose port 80
+# Expose port 80 for the Vite development server
 EXPOSE 80
 
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Start the Vite development server and ensure it binds to all network interfaces
+CMD ["npm", "run", "dev", "--", "--host"]
