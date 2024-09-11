@@ -67,7 +67,7 @@ class SecurityConfig {
         val config =
             CorsConfiguration().apply {
                 allowCredentials = true
-                allowedOrigins = listOf("http://localhost", "http://localhost:80", "http://159.223.128.228/", "http://10.116.0.2/", "https://ammpear.xyz/")
+                allowedOrigins = listOf("http://localhost", "http://localhost:80", "http://localhost:8080", "http://localhost:8081", "http://159.223.128.228/", "http://10.116.0.2/", "https://ammpear.xyz/")
                 allowedHeaders = listOf("Authorization", "Cache-Control", "Content-Type")
                 allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS")
             }
