@@ -88,7 +88,10 @@ export const Deals = () => {
             if (account) {
                 console.log(`Fetching deals for account: ${account}`);
                 try {
-                    const response = await fetch(`http://localhost:8080/deals/all`);
+                    // Dynamically determine the base API URL depending on the environment (testnet / production)
+                    const API_URL = import.meta.env.VITE_API_URL;
+                    console.log(API_URL);
+                    const response = await fetch(`${API_URL}/deals/all`);
                     if (!response.ok) {
                         throw new Error('Failed to fetch deals');
                     }

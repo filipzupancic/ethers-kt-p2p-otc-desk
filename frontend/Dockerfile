@@ -13,8 +13,12 @@ RUN npm install
 # Copy the rest of the application code
 COPY . .
 
-# Build the application
-RUN npm run build
+# Copy environment variables from docker-compose or .env file
+ARG VITE_API_URL
+
+# Build the application using environment variables (VITE_API_URL is passed from outside)
+RUN echo "Building with VITE_API_URL=$VITE_API_URL" && \
+  VITE_API_URL=$VITE_API_URL npm run build
 
 # Stage 2: Serve the application with Nginx
 FROM nginx:alpine
@@ -22,10 +26,13 @@ FROM nginx:alpine
 # Copy the build output to the nginx html directory
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Copy custom nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Accept a build argument to determine which nginx.conf to use
+ARG NGINX_CONF
 
-# Expose port 80
+# Copy the appropriate nginx configuration file based on the build argument
+COPY ${NGINX_CONF} /etc/nginx/conf.d/default.conf
+
+# Expose port 80 (HTTP)
 EXPOSE 80
 
 # Start nginx

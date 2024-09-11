@@ -6,17 +6,58 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - SPRING_PROFILES_ACTIVE=production
+      - SPRING_PROFILES_ACTIVE=${NODE_ENV}
+    profiles:
+      - testnet
+      - production
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL}  # Pass the VITE_API_URL from the .env.testnet
+        - NGINX_CONF=nginx.testnet.conf  # Use testnet config for testnet profile
     ports:
-      - "8081:80"  # Mapping port 80 from Nginx to 8081 for local access
+      - "8081:80"
     depends_on:
       - backend
-    volumes:
-      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     environment:
-      NODE_ENV: production
+      - VITE_API_URL=${VITE_API_URL}
+      - NODE_ENV=${NODE_ENV}
+    profiles:
+      - testnet
+    env_file:
+      - .env.testnet  # Load testnet environment variables
+
+  frontend-production:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL}  # Pass the VITE_API_URL from the .env.production
+        - NGINX_CONF=nginx.conf  # Use production config for production profile
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=${VITE_API_URL}
+      - NODE_ENV=${NODE_ENV}
+    profiles:
+      - production
+    env_file:
+      - .env.production  # Load production environment variables
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $!; done;'"
+    profiles:
+      - production
